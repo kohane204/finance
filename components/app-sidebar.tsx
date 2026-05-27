@@ -10,13 +10,11 @@ import {
   Sun,
   Moon,
   TrendingUp,
-  CreditCard,
   LogOut,
   Users,
   Languages,
   CalendarDays,
   History,
-  Globe,
   Brain
 } from "lucide-react"
 import { useI18n } from "./i18n-provider"

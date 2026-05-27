@@ -24,7 +24,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!credentials?.email || !credentials?.password) return null;
         
         const userArray = await db.select().from(users).where(eq(users.email, credentials.email as string));
-        let user = userArray[0];
+        const user = userArray[0];
 
         if (!user || !user.password) return null;
 
@@ -32,7 +32,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         let passwordsMatch = false;
         try {
           passwordsMatch = await bcrypt.compare(credentials.password as string, user.password);
-        } catch(e) { }
+        } catch { }
 
         if (!passwordsMatch) {
             return null;

@@ -53,9 +53,6 @@ export default function RegisterPage() {
          await registerAction(formData)
       } catch (e: unknown) {
           const errMsg = e instanceof Error ? e.message : String(e);
-          if (errMsg.includes("NEXT_REDIRECT")) {
-              throw e;
-          }
           setError(errMsg || "Failed to register")
       }
   }

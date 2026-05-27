@@ -23,10 +23,12 @@ export function I18nProvider({ children, initialLang }: { children: React.ReactN
     if (!initialLang) {
       const cookieLang = document.cookie.split('; ').find(row => row.startsWith('lang='))?.split('=')[1] as Language
       if (cookieLang && (cookieLang === 'en' || cookieLang === 'vi')) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLang(cookieLang)
       } else {
         const saved = localStorage.getItem("lang") as Language
         if (saved && (saved === "en" || saved === "vi")) {
+           
           setLang(saved)
         }
       }

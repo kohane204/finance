@@ -10,6 +10,7 @@ import { syncPiggyBankGoal, syncDailyReports, syncMonthlyReports, getTodayString
 import { pusherServer } from "@/lib/pusher"
 import { translations, type Language } from "@/lib/i18n/translations"
 import { logActivity } from "@/lib/activities"
+import { AuthError } from "next-auth"
 
 async function getT() {
   const cookieStore = await cookies()
@@ -1060,11 +1061,10 @@ export async function loginAction(formData: FormData) {
   try {
     await signIn("credentials", { ...Object.fromEntries(formData), redirectTo: "/" });
   } catch (error: unknown) {
-    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
-       throw error;
+    if (error instanceof AuthError) {
+      throw new Error("Invalid credentials");
     }
-    // AuthError
-    throw new Error("Invalid credentials");
+    throw error;
   }
 }
 
@@ -1101,7 +1101,14 @@ export async function registerAction(formData: FormData) {
   });
 
   // Automatically log them in after registration
-  await signIn("credentials", { email, password });
+  try {
+    await signIn("credentials", { email, password, redirectTo: "/" });
+  } catch (error: unknown) {
+    if (error instanceof AuthError) {
+      throw new Error("Failed to auto-login after registration");
+    }
+    throw error;
+  }
 }
 
 export async function logoutAction() {
@@ -1383,7 +1390,7 @@ export async function markBillAsPaidAction(billId: string) {
 
   // Update bill status and set next due date based on frequency
   const currentDueDate = new Date(bill.dueDate)
-  let nextDueDate = new Date(currentDueDate)
+  const nextDueDate = new Date(currentDueDate)
 
   if (bill.frequency === "MONTHLY") {
     nextDueDate.setMonth(nextDueDate.getMonth() + 1)
