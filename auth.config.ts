@@ -1,11 +1,9 @@
 import type { NextAuthConfig } from "next-auth";
-import Google from "next-auth/providers/google";
-import Github from "next-auth/providers/github";
-import Credentials from "next-auth/providers/credentials";
 
 export const authConfig = {
+  trustHost: true,
   session: { strategy: "jwt" },
-  providers: [Google, Github, Credentials],
+  providers: [],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
