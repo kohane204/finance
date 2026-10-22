@@ -5,7 +5,7 @@ import { useFormStatus } from "react-dom"
 import { loginAction, loginWithGoogleAction, loginWithGithubAction } from "@/app/actions"
 import Link from "next/link"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
@@ -119,7 +119,7 @@ export default function LoginPage() {
           </div>
           
           <div className="text-center text-sm pt-4">
-            Don't have an account? <Link href="/register" className="underline text-primary">Sign up</Link>
+            Don&apos;t have an account? <Link href="/register" className="underline text-primary">Sign up</Link>
           </div>
         </CardContent>
       </Card>

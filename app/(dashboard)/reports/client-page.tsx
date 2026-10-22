@@ -250,7 +250,7 @@ export default function ReportsClient({
                     <Tooltip 
                       cursor={{fill: 'transparent'}}
                       separator=": "
-                      formatter={(value: any, name: any) => [formatCurrency(Number(value || 0)), String(name || '')] as [string, string]}
+                      formatter={(value: unknown, name: unknown) => [formatCurrency(Number(value || 0)), String(name || '')] as [string, string]}
                       contentStyle={{ borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)" }}
                       itemStyle={{ fontWeight: 500 }}
                     />
@@ -286,7 +286,7 @@ export default function ReportsClient({
                     <Tooltip 
                       cursor={{fill: 'transparent'}}
                       separator=": "
-                      formatter={(value: any, name: any) => [formatCurrency(Number(value || 0)), name || ""] as [string, string]} 
+                      formatter={(value: unknown, name: unknown) => [formatCurrency(Number(value || 0)), String(name || "")] as [string, string]} 
                       contentStyle={{ borderRadius: "8px", background: "var(--background)", border: "1px solid var(--border)", color: "var(--foreground)" }} 
                       itemStyle={{ fontWeight: 500 }}
                     />
@@ -359,7 +359,7 @@ export default function ReportsClient({
                             ))}
                           </Pie>
                           <Tooltip 
-                      formatter={(value: any, name: any) => [formatCurrency(Number(value || 0)), String(name || '')] as [string, string]}
+                      formatter={(value: unknown, name: unknown) => [formatCurrency(Number(value || 0)), String(name || '')] as [string, string]}
                             contentStyle={{ borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)" }}
                             itemStyle={{ fontWeight: 500 }}
                             separator=": "
@@ -451,7 +451,7 @@ export default function ReportsClient({
                                       <Tooltip 
                                         cursor={{ fill: 'transparent' }}
                                         separator=": "
-                      formatter={(value: any, name: any) => [formatCurrency(Number(value || 0)), String(name || '')] as [string, string]}
+                      formatter={(value: unknown, name: unknown) => [formatCurrency(Number(value || 0)), String(name || '')] as [string, string]}
                                         labelFormatter={(label) => new Date(label).toLocaleDateString(lang, { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                         contentStyle={{ borderRadius: "8px", border: "1px solid var(--border)", backgroundColor: "var(--background)", color: "var(--foreground)" }}
                                         itemStyle={{ fontWeight: 500 }}
@@ -576,7 +576,7 @@ export default function ReportsClient({
                                       <Tooltip 
                                         cursor={{ fill: 'transparent' }}
                                         separator=": "
-                      formatter={(value: any, name: any) => [formatCurrency(Number(value || 0)), name || ""] as [string, string]}
+                      formatter={(value: unknown, name: unknown) => [formatCurrency(Number(value || 0)), String(name || "")] as [string, string]}
                                         contentStyle={{ borderRadius: "8px", border: "1px solid var(--border)", textTransform: "capitalize", backgroundColor: "var(--background)", color: "var(--foreground)" }}
                                         itemStyle={{ fontWeight: 500 }}
                                       />

@@ -50,14 +50,7 @@ export default async function BudgetsPage({ searchParams }: { searchParams: Prom
   const monthlyBudget = await getMonthlyBudget(userId, month, year)
   const carryOver = await getCarryOver(userId, month, year)
 
-  // Get live piggbank balance — this is already net of all goal allocations
   const userGoals = await getGoals(userId)
-  const piggyBankGoal = userGoals.find(
-    (g: { name: string }) => g.name === 'Tiền heo đất (Piggy Bank)' || g.name === 'Piggy Bank'
-  )
-  const livePiggyBankBalance = piggyBankGoal
-    ? parseFloat((piggyBankGoal as { currentAmount: string }).currentAmount || '0')
-    : carryOver
 
   // Reserve calculations
   const totalGoalAllocations = userGoals

@@ -23,7 +23,8 @@ export const metadata: Metadata = {
 
 import { auth } from "@/auth";
 import { AdminUserSelector } from "@/components/admin-user-selector";
-import { getAllUsers, getManagedUserId, getNotifications, getUnreadNotificationsCount, syncDailyReports, syncMonthlyReports } from "@/lib/data";
+import { getAllUsers, getManagedUserId, getNotifications, getUnreadNotificationsCount, syncDailyReports, syncMonthlyReports, getAccounts, getGoals, getDashboardStats } from "@/lib/data";
+import { AIChat } from "@/components/ai-chat";
 
 import { cookies } from "next/headers";
 
@@ -49,6 +50,38 @@ export default async function RootLayout({
   const notificationsData = userId ? await getNotifications(userId) : []
   const unreadCount = userId ? await getUnreadNotificationsCount(userId) : 0
 
+  // Fetch real-time AI Chat summary data
+  let chatData = undefined
+  if (userId) {
+    try {
+      const targetUserId = managedUserId || userId
+      const [accounts, goals, stats] = await Promise.all([
+        getAccounts(targetUserId),
+        getGoals(targetUserId),
+        getDashboardStats(targetUserId)
+      ])
+      const totalBalance = accounts.reduce((acc, a) => acc + parseFloat(a.balance as string), 0)
+      const piggyBankGoal = goals.find(g => g.name === "Tiền heo đất (Piggy Bank)" || g.name === "Piggy Bank")
+      const piggyBankBalance = piggyBankGoal ? parseFloat(piggyBankGoal.currentAmount || "0") : 0
+      const regularGoals = goals.filter(g => g.name !== "Tiền heo đất (Piggy Bank)" && g.name !== "Piggy Bank")
+      const totalGoalsProgress = regularGoals.length > 0 
+        ? (regularGoals.reduce((acc, g) => acc + (parseFloat(g.currentAmount as string) / parseFloat(g.targetAmount as string)), 0) / regularGoals.length) * 100
+        : 0
+
+      chatData = {
+        totalBalance,
+        monthlyIncome: stats?.currentMonth.income || 0,
+        monthlyExpenses: stats?.currentMonth.expense || 0,
+        activeGoalsCount: regularGoals.length,
+        totalGoalsProgress,
+        totalSalary: 0,
+        piggyBankBalance
+      }
+    } catch (err) {
+      console.error("AI Chat init error:", err)
+    }
+  }
+
   // Read language cookie on server side
   const cookieStore = await cookies()
   const lang = (cookieStore.get("lang")?.value as "en" | "vi") || "en"
@@ -71,20 +104,21 @@ export default async function RootLayout({
                   unreadCount={unreadCount}
                 />
                 <main className="flex-1 overflow-x-hidden flex flex-col min-h-screen relative p-0 bg-muted/20">
-                  <header className="flex h-14 lg:h-[60px] items-center justify-between border-b bg-muted/40 px-6 sm:px-4 md:hidden">
+                  <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-border/40 bg-background/60 backdrop-blur-md px-6 sm:px-4 md:hidden">
                     <div className="flex items-center gap-4">
-                      <SidebarTrigger />
-                      <div className="font-semibold px-2">Finova Menu</div>
+                      <SidebarTrigger className="h-9 w-9 hover:bg-muted/60 rounded-xl" />
+                      <div className="font-extrabold text-base tracking-tight bg-gradient-to-r from-primary to-indigo-600 bg-clip-text text-transparent px-2">Finova</div>
                     </div>
                     {/* Notification bell for mobile header */}
                     <div className="md:hidden">
                        <NotificationPopover notifications={notificationsData as AppNotification[]} unreadCount={unreadCount} />
                     </div>
                   </header>
-                  <div className="flex-1 p-6">
+                  <div className="flex-1 p-6 sm:p-4">
                     {isAdmin && <AdminUserSelector users={allUsers} currentManagedUserId={managedUserId} />}
                     {children}
                   </div>
+                  <AIChat financialData={chatData} />
                 </main>
               </SidebarProvider>
               ) : (

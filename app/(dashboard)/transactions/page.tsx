@@ -17,7 +17,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
   const isAllUsers = isAdmin && !targetId
 
   let accounts: { id: string }[] = []
-  let dbTransactions: { id: string, date: string | number | Date, amount: string | number, payee?: string | null, category?: string | null, notes?: string | null, status?: string | null, account?: string | null, user?: { name?: string | null, email?: string | null } | null }[] = []
+  let dbTransactions: { id: string, date: string | number | Date, amount: string | number, payee?: string | null, category?: string | null, categoryName?: string | null, notes?: string | null, status?: string | null, account?: string | null, user?: { name?: string | null, email?: string | null } | null }[] = []
   let totalTransactions = 0
   if (isAllUsers) {
     accounts = await getAllAccounts()
@@ -37,7 +37,7 @@ export default async function TransactionsPage({ searchParams }: { searchParams:
     date: new Date(t.date).toISOString().split('T')[0],
     amount: parseFloat(t.amount as string),
     payee: t.payee || "Unknown",
-    category: (t as any).categoryName || t.notes?.replace('Category: ', '').split(' (AI Scan)')[0] || "General",
+    category: t.categoryName || t.notes?.replace('Category: ', '').split(' (AI Scan)')[0] || "General",
     status: t.status || "Completed",
     account: t.account || "Main Account",
     userName: t.user?.name || t.user?.email || undefined

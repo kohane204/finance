@@ -7,11 +7,8 @@ import {
   Wallet, 
   Activity, 
   CreditCard,
-  DollarSign,
   MoreHorizontal,
   PiggyBank,
-  PieChart,
-  Star,
   TrendingUp,
   ArrowRight
 } from "lucide-react"
@@ -26,13 +23,11 @@ import {
   YAxis,
   CartesianGrid,
   BarChart,
-  Bar,
-  Legend
+  Bar
 } from "recharts"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Avatar } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 
 export type DashboardData = {
@@ -212,7 +207,7 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
                     contentStyle={{ borderRadius: "20px", border: "none", backgroundColor: "rgba(0,0,0,0.85)", backdropFilter: "blur(4px)", color: "#fff", boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)" }}
                     cursor={{ stroke: "rgba(255,255,255,0.1)", strokeWidth: 2 }}
                     itemStyle={{ fontWeight: "bold", fontSize: "12px" }}
-                    formatter={(value: any) => [formatCurrency(Number(value || 0)), " "]}
+                    formatter={(value: unknown) => [formatCurrency(Number(value || 0)), " "]}
                   />
                   <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorIncome)" connectNulls={true} animationDuration={2000} strokeLinecap="round" />
                   <Area type="monotone" dataKey="expense" stroke="#f43f5e" strokeWidth={4} fillOpacity={1} fill="url(#colorExpense)" connectNulls={true} animationDuration={2000} strokeLinecap="round" />
@@ -237,7 +232,7 @@ export default function DashboardClient({ data }: { data: DashboardData }) {
                     <YAxis fontSize={10} tickLine={false} axisLine={false} tickFormatter={compactNum} width={40} />
                     <Tooltip 
                        contentStyle={{ borderRadius: "16px", border: "none", backgroundColor: "rgba(0,0,0,0.9)", color: "#fff" }}
-                       formatter={(value: any) => [formatCurrency(Number(value || 0)), " "]}
+                       formatter={(value: unknown) => [formatCurrency(Number(value || 0)), " "]}
                     />
                     <Bar dataKey="expense" fill="#f43f5e" radius={[10, 10, 10, 10]} barSize={24} animationDuration={1000} />
                   </BarChart>

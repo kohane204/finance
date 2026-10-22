@@ -147,7 +147,12 @@ export function CalendarDashboard({ initialData, lang, userCreatedAt }: Calendar
               </Link>
             </Button>
           )}
-          <div className="px-4 font-semibold text-lg flex items-center gap-2">
+          <Button variant="ghost" size="sm" asChild className="rounded-xl px-2 h-8 text-xs font-bold text-muted-foreground hover:text-foreground">
+            <Link href={`/calendar?month=${today.getMonth() + 1}&year=${today.getFullYear()}`}>
+              {lang === "vi" ? "Hôm nay" : "Today"}
+            </Link>
+          </Button>
+          <div className="px-3 font-semibold text-base flex items-center gap-1.5">
              <span className="text-primary">{month}</span>
              <span className="text-muted-foreground">/</span>
              <span>{year}</span>
@@ -177,7 +182,10 @@ export function CalendarDashboard({ initialData, lang, userCreatedAt }: Calendar
       <Card className="border-none py-0 shadow-2xl bg-background/40 backdrop-blur-xl overflow-hidden rounded-[2.5rem] ring-1 ring-border/20">
         <div className="border-b border-border/50 bg-primary/10">
           <div className="grid grid-cols-7 text-center">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+            {(lang === "vi" 
+              ? ["CN", "T2", "T3", "T4", "T5", "T6", "T7"] 
+              : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+            ).map((d) => (
               <div key={d} className="py-4 text-xs font-black text-muted-foreground uppercase tracking-widest">{d}</div>
             ))}
           </div>

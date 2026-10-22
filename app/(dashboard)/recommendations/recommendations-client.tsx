@@ -1,10 +1,9 @@
 "use client"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { useI18n } from "@/components/i18n-provider"
-import { TrendingUp, TrendingDown, Target, Brain, ShieldCheck, AlertTriangle } from "lucide-react"
+import { TrendingDown, Target, Brain, ShieldCheck, AlertTriangle } from "lucide-react"
 import { DashboardStats, Budget, Goal } from "@/lib/types"
 
 export default function RecommendationsClient({ stats, budgets, goals }: { 

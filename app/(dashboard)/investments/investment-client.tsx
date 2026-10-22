@@ -4,11 +4,10 @@ import * as React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { useI18n } from "@/components/i18n-provider"
 import { Badge } from "@/components/ui/badge"
-import { Calculator, TrendingUp, Info, Wallet, PieChart, ShieldCheck } from "lucide-react"
+import { Calculator, TrendingUp, PieChart, ShieldCheck } from "lucide-react"
 import { DashboardStats } from "@/lib/types"
 
 export default function InvestmentClient({ stats }: { stats: DashboardStats | null }) {
@@ -18,7 +17,6 @@ export default function InvestmentClient({ stats }: { stats: DashboardStats | nu
   const [monthlyContribution, setMonthlyContribution] = React.useState(100)
   const [years, setYears] = React.useState(10)
   const [returnRate, setReturnRate] = React.useState(7)
-  const [totalValue, setTotalValue] = React.useState(0)
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat(lang === "vi" ? "vi-VN" : "en-US", {
@@ -28,7 +26,7 @@ export default function InvestmentClient({ stats }: { stats: DashboardStats | nu
     }).format(value)
   }
 
-  const calculateGrowth = () => {
+  const totalValue = React.useMemo(() => {
     let total = initialAmount
     const monthlyRate = returnRate / 100 / 12
     const totalMonths = years * 12
@@ -36,11 +34,7 @@ export default function InvestmentClient({ stats }: { stats: DashboardStats | nu
     for (let i = 0; i < totalMonths; i++) {
       total = (total + monthlyContribution) * (1 + monthlyRate)
     }
-    setTotalValue(total)
-  }
-
-  React.useEffect(() => {
-    calculateGrowth()
+    return total
   }, [initialAmount, monthlyContribution, years, returnRate])
 
   const income = stats?.currentMonth.income || 0

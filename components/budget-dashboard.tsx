@@ -15,7 +15,8 @@ import {
   RefreshCcw,
   Trash2,
   Loader2,
-  Sparkles
+  Sparkles,
+  AlertCircle
 } from "lucide-react"
 
 import { useRouter } from "next/navigation"
@@ -383,6 +384,37 @@ export function BudgetDashboard({ initialData, lang, userCreatedAt }: BudgetDash
     setIsDistributed(true)
   }
 
+  // Calculate unallocated budget buffer
+  const unallocatedBuffer = salaryValue - totalExpected
+
+  const handleMoveToReserves = async () => {
+    if (unallocatedBuffer <= 0) return
+    setLoading(true)
+    const newReserveVal = (parseFloat(reserveInput) || 0) + unallocatedBuffer
+    const newReserveUsd = newReserveVal / rate
+    
+    const formData = new FormData()
+    formData.set("month", currentMonth.toString())
+    formData.set("year", currentYear.toString())
+    formData.set("salary", salaryInput)
+    formData.set("salaryUsd", (parseFloat(salaryInput) / rate).toString())
+    formData.set("cashInHandUsd", (parseFloat(cashInput) / rate).toString())
+    formData.set("reserveFundsUsd", newReserveUsd.toString())
+    formData.set("applyToFuture", "false")
+    formData.set("resetFuture", "false")
+    
+    try {
+      await updateMonthlySalaryAction(formData)
+      setReserveInput(String(rate > 1 ? Math.round(newReserveVal) : Math.round(newReserveVal * 100) / 100))
+      toast.success(t("saveSuccess"))
+      router.refresh()
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : String(e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Navigation restrictions
   const userStartMonth = new Date(userCreatedAt).getUTCMonth() + 1
   const userStartYear = new Date(userCreatedAt).getUTCFullYear()
@@ -441,11 +473,54 @@ export function BudgetDashboard({ initialData, lang, userCreatedAt }: BudgetDash
                {currentMonth.toString().padStart(2, '0')} / {currentYear}
             </div>
             <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 rounded-lg" onClick={handleNextMonth}>
-              <ChevronRight className="h-4 w-4" />
+               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </div>
+
+      {/* Warning and Allocator Banners */}
+      {totalExpected > salaryValue + 0.1 && (
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 font-extrabold text-sm flex items-center gap-2 shadow-xs animate-pulse">
+          <AlertCircle className="size-4 shrink-0 animate-bounce" />
+          <span>
+            {t("overBudgetWarning")
+              .replace("{total}", formatCurrency(totalExpected / rate))
+              .replace("{salary}", formatCurrency(salaryValue / rate))}
+          </span>
+        </div>
+      )}
+
+      {unallocatedBuffer > 0.01 && !isFutureMonth && (
+        <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-700 font-bold text-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-xs">
+          <div className="flex items-center gap-2">
+            <Info className="size-4 shrink-0 text-indigo-500" />
+            <span>
+              {lang === "vi" 
+                ? `Bạn còn ${formatCurrency(unallocatedBuffer / rate)} chưa phân bổ trong ngân sách tháng này.`
+                : `You have ${formatCurrency(unallocatedBuffer / rate)} unallocated buffer left in this month's budget.`}
+            </span>
+          </div>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={distributeEvenly} 
+              className="rounded-lg h-8 border-indigo-200 text-indigo-700 hover:bg-indigo-50 text-xs font-bold flex-1 sm:flex-initial"
+            >
+              {t("distributeEvenly") || "Phân bổ đều"}
+            </Button>
+            <Button 
+              size="sm" 
+              onClick={handleMoveToReserves} 
+              disabled={loading}
+              className="rounded-lg h-8 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex-1 sm:flex-initial"
+            >
+              {lang === "vi" ? "Chuyển vào quỹ dự trữ" : "Put in reserve"}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards Section - Input Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -679,12 +754,29 @@ export function BudgetDashboard({ initialData, lang, userCreatedAt }: BudgetDash
                      setIsScanning(true)
                      const formData = new FormData()
                      formData.append("file", file)
+                     formData.append("month", String(currentMonth))
+                     formData.append("year", String(currentYear))
                      try {
-                        toast.info(t("scanning"))
                         const result = await scanActivitiesAction(formData)
-                        if (result.count > 0) {
-                           toast.success(t("scanSuccessMsg").replace("{count}", String(result.count)).replace("{date}", result.date))
-                           // Reload to reflect new transactions
+                        const hasSalary = result.totalSalary !== undefined && result.totalSalary !== null
+                        const hasCash = result.cashInHand !== undefined && result.cashInHand !== null
+                        
+                        if (result.count > 0 || hasSalary || hasCash) {
+                           let msg = ""
+                           if (result.count > 0) {
+                              msg = t("scanSuccessMsg").replace("{count}", String(result.count)).replace("{date}", result.date)
+                           } else {
+                              msg = t("saveSuccess")
+                           }
+                           
+                           if (hasSalary || hasCash) {
+                              const details = []
+                              if (hasSalary) details.push(`${t("totalSalary")}: ${formatCurrency(result.totalSalary as number)}`)
+                              if (hasCash) details.push(`${t("cashInHand")}: ${formatCurrency(result.cashInHand as number)}`)
+                              msg += ` - Auto-filled: ${details.join(", ")}`
+                           }
+                           
+                           toast.success(msg)
                            router.refresh()
                         } else {
                            toast.error(t("scanNoResult"))

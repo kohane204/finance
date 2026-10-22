@@ -7,14 +7,14 @@ import { useI18n } from "@/components/i18n-provider"
 import { Wallet, Landmark, PiggyBank, Receipt, TrendingUp, TrendingDown, Scale, ShieldCheck, PieChart } from "lucide-react"
 import { Account, Goal, Loan, DashboardStats } from "@/lib/types"
 
-export default function NetWorthClient({ accounts, goals, loans, stats }: { 
+export default function NetWorthClient({ accounts, goals, loans }: { 
     accounts: Account[], 
     goals: Goal[], 
     loans: Loan[], 
-    stats: DashboardStats | null 
+    stats?: DashboardStats | null 
 }) {
 
-  const { t, lang, formatCurrency } = useI18n()
+  const { t, formatCurrency } = useI18n()
 
   // Asset Calculation
   const accountAssets = accounts.reduce((sum, acc) => sum + (parseFloat(acc.balance) || 0), 0)

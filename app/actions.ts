@@ -1,8 +1,8 @@
 "use server"
 
 import { db } from "@/schema"
-import { transactions, monthlyBudgets, dailyBudgets, categories, cards, goals, budgets, notifications, friends, messages, loans, users, bills } from "@/schema"
-import { eq, and, or, desc, ne } from "drizzle-orm"
+import { transactions, monthlyBudgets, dailyBudgets, categories, cards, goals, budgets, notifications, loans, users, bills } from "@/schema"
+import { eq, and } from "drizzle-orm"
 import { auth, signIn, signOut } from "@/auth"
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
@@ -517,7 +517,14 @@ export async function scanActivitiesAction(formData: FormData) {
   const lang = (cookieStore.get("lang")?.value || "en") as Language
   const rate = lang === "vi" ? 26000 : 1
 
-  const prompt = `You are a highly capable financial data extractor. Your task is to analyze this entire document and extract EVERY SINGLE expected cost (chi phí dự kiến) and actual activity (hoạt động thu/chi).
+  const activeMonthStr = formData.get("month") as string | null
+  const activeYearStr = formData.get("year") as string | null
+  const { month: fallbackMonth, year: fallbackYear } = getICTNow()
+  const activeMonth = activeMonthStr ? parseInt(activeMonthStr) : fallbackMonth
+  const activeYear = activeYearStr ? parseInt(activeYearStr) : fallbackYear
+  const monthTwoDigits = activeMonth.toString().padStart(2, '0')
+
+  const prompt = `You are a highly capable financial data extractor. Your task is to analyze this entire document and extract EVERY SINGLE expected cost (chi phí dự kiến) and actual activity (hoạt động thu/chi), along with the overall monthly total salary (tổng lương tháng) and current cash in hand (tiền mặt hiện tại) if present in the document.
 
 CRITICAL INSTRUCTIONS:
 1. The document contains daily activities for an entire month (between 28 to 31 days depending on the month). You MUST extract ALL activities from the very first day to the very last day present in the document.
@@ -525,26 +532,30 @@ CRITICAL INSTRUCTIONS:
 3. Keep generating until the entire document has been processed from start to finish. Do not let repetitive patterns stop you.
 4. Classify each actual activity as either "EXPENSE" (chi) or "INCOME" (thu).
 5. Extract daily expected costs (chi phí dự kiến) into the "expectedCosts" array.
+6. Extract "totalSalary" (tổng lương tháng) and "cashInHand" (tiền mặt hiện tại) if they are explicitly mentioned or can be derived from the document header/summary.
 
 Return ONLY a valid JSON object in this exact format (no markdown, no preamble):
 {
+  "totalSalary": 10000000,
+  "cashInHand": 500000,
   "expectedCosts": [
-    { "date": "${new Date().getFullYear()}-03-01", "amount": 500000 }
+    { "date": "${activeYear}-${monthTwoDigits}-01", "amount": 500000 }
   ],
   "entries": [
-    { "payee": "Tên cửa hàng", "amount": 50000, "category": "Thực phẩm", "date": "${new Date().getFullYear()}-03-29", "type": "EXPENSE" },
-    { "payee": "Lương", "amount": 3000000, "category": "Lương", "date": "${new Date().getFullYear()}-03-01", "type": "INCOME" }
+    { "payee": "Tên cửa hàng", "amount": 50000, "category": "Thực phẩm", "date": "${activeYear}-${monthTwoDigits}-29", "type": "EXPENSE" },
+    { "payee": "Lương", "amount": 3000000, "category": "Lương", "date": "${activeYear}-${monthTwoDigits}-01", "type": "INCOME" }
   ]
 }
 
 Rules:
 - amount: absolute positive number. (e.g., "45k" -> 45000).
-- date: YYYY-MM-DD. Handle shorthand dates like "29/3" as being in current year (${new Date().getFullYear()}). NEVER return year 2024 if it's currently ${new Date().getFullYear()}.
+- date: YYYY-MM-DD. Handle shorthand dates like "29/${activeMonth}" or "29" as being in month ${activeMonth} and year ${activeYear}. NEVER return a month other than ${activeMonth} or a year other than ${activeYear}.
 - type: "EXPENSE" for spending, "INCOME" for money received.
 - category & payee: Use VIETNAMESE language if the document is in Vietnamese or English.
 - category: Determine the most appropriate and concise category name (e.g., Thực phẩm, Di chuyển, Mua sắm, Giải trí, Sức khỏe, Tiền ích, Hóa đơn, Nhà ở, Lương, Chuyển khoản, v.v. or automatically generate a suitable short name). Do NOT restrict yourself to a fixed list.
 - If no expected costs exist in the document, return an empty array [] for expectedCosts.
-- If no entries exist, return an empty array [] for entries.`
+- If no entries exist, return an empty array [] for entries.
+- If totalSalary or cashInHand are not found, return null or omit them.`
 
   // Call Gemini API
   const response = await fetch(
@@ -566,6 +577,8 @@ Rules:
           responseSchema: {
             type: "OBJECT",
             properties: {
+              totalSalary: { type: "NUMBER", nullable: true },
+              cashInHand: { type: "NUMBER", nullable: true },
               expectedCosts: {
                 type: "ARRAY",
                 items: {
@@ -618,12 +631,16 @@ Rules:
 
   let entries: { payee: string; amount: number; category: string; date: string; type?: "EXPENSE" | "INCOME" }[] = []
   let expectedCosts: { date: string; amount: number }[] = []
+  let totalSalary: number | null = null
+  let cashInHand: number | null = null
 
   try {
     const part = result?.candidates?.[0]?.content?.parts?.[0]
     if (part && typeof part === "object" && !part.text && (part.entries || part.expectedCosts)) {
       entries = part.entries || []
       expectedCosts = part.expectedCosts || []
+      totalSalary = part.totalSalary || null
+      cashInHand = part.cashInHand || null
     } else {
       const rawText: string = part?.text ?? ""
       let cleaned = rawText.replace(/```json\n?|\n?```/g, "").trim()
@@ -636,6 +653,8 @@ Rules:
         const parsed = JSON.parse(cleaned)
         entries = parsed.entries || []
         expectedCosts = parsed.expectedCosts || []
+        totalSalary = parsed.totalSalary || null
+        cashInHand = parsed.cashInHand || null
       } catch {
         const lastBracePos = cleaned.lastIndexOf("}")
         if (lastBracePos !== -1) {
@@ -661,7 +680,36 @@ Rules:
     return { count: 0, date: "" }
   }
 
-  if (entries.length === 0 && expectedCosts.length === 0) return { count: 0, date: "" }
+  if (entries.length === 0 && expectedCosts.length === 0 && totalSalary === null && cashInHand === null) return { count: 0, date: "" }
+
+  // Upsert monthly budget if totalSalary or cashInHand was found
+  if (totalSalary !== null || cashInHand !== null) {
+    const mbRecord = await db.select().from(monthlyBudgets)
+      .where(and(eq(monthlyBudgets.userId, userId), eq(monthlyBudgets.month, activeMonth), eq(monthlyBudgets.year, activeYear)))
+      .limit(1)
+
+    const totalSalaryUsd = totalSalary !== null ? (totalSalary / rate).toString() : undefined
+    const cashInHandUsd = cashInHand !== null ? (cashInHand / rate).toString() : undefined
+
+    if (mbRecord.length > 0) {
+      await db.update(monthlyBudgets)
+        .set({
+          ...(totalSalaryUsd !== undefined ? { totalSalary: totalSalaryUsd } : {}),
+          ...(cashInHandUsd !== undefined ? { cashInHand: cashInHandUsd } : {}),
+          updatedAt: new Date()
+        })
+        .where(eq(monthlyBudgets.id, mbRecord[0].id))
+    } else {
+      await db.insert(monthlyBudgets).values({
+        userId,
+        month: activeMonth,
+        year: activeYear,
+        totalSalary: totalSalaryUsd || "0",
+        cashInHand: cashInHandUsd || "0",
+        reserveFunds: "0"
+      })
+    }
+  }
 
   // Validate expected costs
   if (expectedCosts.length > 0) {
@@ -784,9 +832,12 @@ Rules:
 
   revalidatePath("/reports")
   revalidatePath("/budgets")
-  const displayDateStr = (entries[0]?.date ? new Date(entries[0].date) : new Date()).toLocaleDateString('vi-VN', { month: '2-digit', year: 'numeric' })
-
-  return { count: insertedCount + updatedCount, date: displayDateStr }
+  return { 
+    count: insertedCount + updatedCount, 
+    date: `${monthTwoDigits}/${activeYear}`,
+    totalSalary: totalSalary !== null ? (totalSalary / rate) : undefined,
+    cashInHand: cashInHand !== null ? (cashInHand / rate) : undefined
+  }
 }
 
 // ─── Card / Account Actions ──────────────────────────────────────────────────
@@ -1348,7 +1399,7 @@ export async function createBillAction(formData: FormData) {
   const rate = lang === "vi" ? 26000 : 1
   const amountUsd = amountRaw / rate
 
-  await db.insert(bills).values({
+  const [newBill] = await db.insert(bills).values({
     userId,
     name,
     amount: amountUsd.toString(),
@@ -1356,6 +1407,17 @@ export async function createBillAction(formData: FormData) {
     frequency,
     categoryId: categoryId || null,
     status: 'UNPAID'
+  }).returning({ id: bills.id })
+
+  await logActivity({
+    userId,
+    action: "CREATE",
+    entityType: "BILL",
+    entityId: newBill.id,
+    description: lang === "vi" 
+      ? `Đã tạo hóa đơn: ${name} (${amountRaw.toLocaleString()} ₫)` 
+      : `Created bill: ${name} ($${amountRaw})`,
+    metadata: { name, amountRaw, dueDate, frequency }
   })
 
   revalidatePath("/bills")
@@ -1364,7 +1426,27 @@ export async function createBillAction(formData: FormData) {
 
 export async function deleteBillAction(billId: string) {
   const userId = await getTargetUserId()
+  
+  const [existingBill] = await db.select().from(bills).where(and(eq(bills.id, billId), eq(bills.userId, userId))).limit(1)
+  if (!existingBill) throw new Error("Bill not found.")
+
   await db.delete(bills).where(and(eq(bills.id, billId), eq(bills.userId, userId)))
+
+  const cookieStore = await cookies()
+  const lang = cookieStore.get("lang")?.value || "en"
+  const rate = lang === "vi" ? 26000 : 1
+  const amountDisplay = parseFloat(existingBill.amount) * rate
+
+  await logActivity({
+    userId,
+    action: "DELETE",
+    entityType: "BILL",
+    entityId: billId,
+    description: lang === "vi"
+      ? `Đã xóa hóa đơn: ${existingBill.name} (${amountDisplay.toLocaleString()} ₫)`
+      : `Deleted bill: ${existingBill.name} ($${parseFloat(existingBill.amount)})`
+  })
+
   revalidatePath("/bills")
   await pusherServer.trigger(`user-${userId}`, "invalidate", { type: 'bill_update' })
 }
@@ -1378,7 +1460,7 @@ export async function markBillAsPaidAction(billId: string) {
   const amountUsd = parseFloat(bill.amount as string)
   
   // Create a transaction for this payment
-  await db.insert(transactions).values({
+  const [tx] = await db.insert(transactions).values({
     userId,
     amount: (-amountUsd).toString(),
     type: "EXPENSE",
@@ -1386,7 +1468,7 @@ export async function markBillAsPaidAction(billId: string) {
     payee: `Bill Payment: ${bill.name}`,
     notes: `Recurring ${bill.frequency} payment`,
     isRecurring: true
-  })
+  }).returning({ id: transactions.id })
 
   // Update bill status and set next due date based on frequency
   const currentDueDate = new Date(bill.dueDate)
@@ -1406,6 +1488,22 @@ export async function markBillAsPaidAction(billId: string) {
     lastPaidDate: new Date(),
     updatedAt: new Date()
   }).where(eq(bills.id, billId))
+
+  const cookieStore = await cookies()
+  const lang = cookieStore.get("lang")?.value || "en"
+  const rate = lang === "vi" ? 26000 : 1
+  const amountDisplay = amountUsd * rate
+
+  await logActivity({
+    userId,
+    action: "UPDATE",
+    entityType: "BILL",
+    entityId: billId,
+    description: lang === "vi"
+      ? `Đã thanh toán hóa đơn: ${bill.name} (${amountDisplay.toLocaleString()} ₫)`
+      : `Paid bill: ${bill.name} ($${amountUsd})`,
+    metadata: { billName: bill.name, amount: amountUsd, transactionId: tx.id }
+  })
 
   revalidatePath("/bills")
   revalidatePath("/transactions")

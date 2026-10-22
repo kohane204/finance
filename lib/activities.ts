@@ -1,7 +1,7 @@
 import { db, activities } from "@/schema"
 
 export type ActivityAction = "CREATE" | "UPDATE" | "DELETE" | "LOGIN" | "LOGOUT"
-export type EntityType = "TRANSACTION" | "BUDGET" | "GOAL" | "CARD" | "USER" | "FRIEND" | "LOAN"
+export type EntityType = "TRANSACTION" | "BUDGET" | "GOAL" | "CARD" | "USER" | "FRIEND" | "LOAN" | "BILL"
 
 export async function logActivity({
   userId,

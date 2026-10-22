@@ -7,6 +7,6 @@ export default async function SettingsPage() {
   if (!user) return redirect("/login")
 
   return (
-    <SettingsClient user={user as any} />
+    <SettingsClient user={user} />
   )
 }

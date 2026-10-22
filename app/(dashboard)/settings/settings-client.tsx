@@ -11,6 +11,7 @@ import { User, Bell, Wallet, Loader2 } from "lucide-react"
 import { useI18n } from "@/components/i18n-provider"
 import { updateUserAction } from "@/app/actions"
 import { toast } from "sonner"
+import type { Language } from "@/lib/i18n/translations"
 
 interface SettingsUser {
   name?: string | null;
@@ -32,8 +33,11 @@ export default function SettingsClient({ user }: { user: SettingsUser }) {
 
   // Sync currency with language changes if it's an automatic switch
   React.useEffect(() => {
-    if (lang === 'en' && currency === 'VND') setCurrency('USD')
-    if (lang === 'vi' && currency === 'USD') setCurrency('VND')
+    setCurrency(prev => {
+      if (lang === 'en' && prev === 'VND') return 'USD'
+      if (lang === 'vi' && prev === 'USD') return 'VND'
+      return prev
+    })
   }, [lang])
 
   const handleSave = async () => {
@@ -106,7 +110,7 @@ export default function SettingsClient({ user }: { user: SettingsUser }) {
             <div className="space-y-2 text-left">
               <Label className="text-sm font-semibold mb-2 block">{t("language")}</Label>
               <Select value={lang} onValueChange={(v) => {
-                const newLang = v as any;
+                const newLang = v as Language;
                 setLang(newLang);
                 if (newLang === 'en') setCurrency('USD');
                 if (newLang === 'vi') setCurrency('VND');
